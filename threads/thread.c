@@ -37,6 +37,11 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+/* Helper function for list_insert_ordered */
+bool cmp_priority(const struct list_elem *a,
+                  const struct list_elem *b,
+                  void *aux);
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame
 {
@@ -196,6 +201,11 @@ tid_t thread_create(const char *name, int priority,
   /* Add to run queue. */
   thread_unblock(t);
 
+  if (t->priority > thread_current()->priority)
+  {
+    thread_yield();
+  }
+
   return tid;
 }
 
@@ -230,9 +240,20 @@ void thread_unblock(struct thread *t)
 
   old_level = intr_disable();
   ASSERT(t->status == THREAD_BLOCKED);
-  list_push_back(&ready_list, &t->elem);
+  // list_push_back(&ready_list, &t->elem);
+
+  // Insert threads into ready_list in ordered manner
+  list_insert_ordered(&ready_list, &t->elem, (list_less_func *)cmp_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level(old_level);
+}
+
+// Helper function for list_insert_ordered
+bool cmp_priority(const struct list_elem *a,
+                  const struct list_elem *b,
+                  void *aux)
+{
+  return list_entry(a, struct thread, elem)->priority < list_entry(b, struct thread, elem)->priority;
 }
 
 /* Returns the name of the running thread. */
@@ -298,7 +319,7 @@ void thread_yield(void)
 
   old_level = intr_disable();
   if (cur != idle_thread)
-    list_push_back(&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, (list_less_func *)cmp_priority, NULL);
   cur->status = THREAD_READY;
   schedule();
   intr_set_level(old_level);
