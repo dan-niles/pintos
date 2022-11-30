@@ -141,6 +141,7 @@ int pintos_init(void)
   {
     // TODO: no command line passed to kernel. Run interactively
     printf("----- Welcome to PintOS -----\n");
+    printf("Type 'help' to get a list of available commands.\n\n");
 
     char input[256];   // Stores user input
     int input_end = 0; // Points to the end of line
@@ -197,15 +198,15 @@ int pintos_init(void)
       else if (string_compare(input, "time", 4, input_end))
       {
         long int curr_time = rtc_get_time();
-        printf("Current time is %d\n", curr_time);
+        printf("Current time is %ld\n", curr_time);
       }
-      // Displays the number of seconds passed since Unix epoch
+      // Displays the amount of RAM available for the OS
       else if (string_compare(input, "ram", 3, input_end))
         printf("Total RAM is %d kB\n", init_ram_pages * PGSIZE / 1024);
-      // Display thread statistics
+      // Displayx thread statistics
       else if (string_compare(input, "thread", 6, input_end))
         thread_print_stats();
-      // Display the thread priority of the current thread
+      // Displays the thread priority of the current thread
       else if (string_compare(input, "priority", 8, input_end))
       {
         int _thread_priority = thread_get_priority();
@@ -214,6 +215,17 @@ int pintos_init(void)
       // Exit interactive shell
       else if (string_compare(input, "exit", 4, input_end))
         exit = 1;
+      // Displays list of available commands
+      else if (string_compare(input, "help", 4, input_end))
+      {
+        printf("whoami   - Displays user's name alongside their index number\n");
+        printf("shutdown - Pintos OS will shutdown and exit the qemu emulator\n");
+        printf("time     - Displays the number of seconds passed since Unix epoch\n");
+        printf("ram      - Display the amount of RAM available for the OS\n");
+        printf("thread   - Displays thread statistics\n");
+        printf("priority - Displays the thread priority of the current thread\n");
+        printf("exit     - Exit interactive shell\n");
+      }
       else
         printf("Command not found\n");
     }
