@@ -325,7 +325,7 @@ void thread_yield(void)
   intr_set_level(old_level);
 }
 
-/* Invoke function 'func' on all threads, passing along 'aux'.
+/* Invoke function 'func' on all  threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void thread_foreach(thread_action_func *func, void *aux)
 {
@@ -344,7 +344,12 @@ void thread_foreach(thread_action_func *func, void *aux)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
+  int old_priority = thread_current()->priority;
   thread_current()->priority = new_priority;
+  if (old_priority > new_priority)
+  {
+    thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
