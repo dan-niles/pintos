@@ -37,6 +37,14 @@ tid_t process_execute(const char *file_name)
     return TID_ERROR;
   strlcpy(fn_copy, file_name, PGSIZE);
 
+  /* Create a new string for only the program name (Without arguments). */
+  char *saveptr; // For strtok_r to maintain context between successive calls
+  char *prog_name = strtok_r((char *)file_name, " ", &saveptr);
+
+  /* Ensure that we weren't passed a NULL command line string (all spaces, for examples). */
+  if (prog_name == NULL)
+    return -1;
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
