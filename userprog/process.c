@@ -38,15 +38,15 @@ tid_t process_execute(const char *file_name)
   strlcpy(fn_copy, file_name, PGSIZE);
 
   /* Create a new string for only the program name (Without arguments). */
-  char *saveptr; // For strtok_r to maintain context between successive calls
-  char *prog_name = strtok_r((char *)file_name, " ", &saveptr);
+  char *save_ptr; // For strtok_r to maintain context between successive calls
+  char *prog_name = strtok_r((char *)file_name, " ", &save_ptr);
 
-  /* Ensure that we weren't passed a NULL command line string (all spaces, for examples). */
+  /* Validate program name */
   if (prog_name == NULL)
     return -1;
 
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+  /* Create a new thread to execute the program. */
+  tid = thread_create(prog_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page(fn_copy);
   return tid;
@@ -61,17 +61,71 @@ start_process(void *file_name_)
   struct intr_frame if_;
   bool success;
 
+  char *token, *save_ptr;
+  char *argv[50]; // Stores tokenized command line arguments
+  int argc = 0;
+
+  /* Tokenize the command line string. */
+  for (token = strtok_r((char *)file_name, " ", &save_ptr); token != NULL;
+       token = strtok_r(NULL, " ", &save_ptr))
+  {
+    argv[argc] = token;
+    argc++;
+  }
+
   /* Initialize interrupt frame and load executable. */
   memset(&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load(file_name, &if_.eip, &if_.esp);
+  success = load(argv[0], &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page(file_name);
   if (!success)
     thread_exit();
+  else
+  {
+    /* Push arguments onto the stack. */
+    int i;
+    int argv_addr[argc];   // Stores the address of each argument on the stack
+    int argv_addr_len = 0; // Stores the number of arguments on the stack
+
+    /* Push the arguments onto the stack. */
+    for (i = argc - 1; i >= 0; i--)
+    {
+      if_.esp -= strlen(argv[i]) + 1;
+      memcpy(if_.esp, argv[i], strlen(argv[i]) + 1);
+      argv_addr[argv_addr_len] = (int)if_.esp;
+      argv_addr_len++;
+    }
+
+    /* Align the stack. */
+    if_.esp -= (int)if_.esp % 4;
+
+    /* Push a null pointer sentinel. */
+    if_.esp -= 4;
+    *(int *)if_.esp = 0;
+
+    /* Push the address of each argument onto the stack. */
+    for (i = argv_addr_len - 1; i >= 0; i--)
+    {
+      if_.esp -= 4;
+      *(int *)if_.esp = argv_addr[i];
+    }
+
+    /* Push the address of argv[0]. */
+    if_.esp -= 4;
+    *(int *)if_.esp = (int)if_.esp + 4;
+
+    /* Push argc. */
+    if_.esp -= 4;
+    *(int *)if_.esp = argc;
+
+    /* Push a fake return address. */
+    if_.esp -= 4;
+    *(int *)if_.esp = 0;
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
