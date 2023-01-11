@@ -151,6 +151,7 @@ start_process(void *file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
+  sema_down(&thread_current()->sema);
   return -1;
 }
 

@@ -92,7 +92,7 @@ static tid_t allocate_tid(void);
 void thread_init(void)
 {
   ASSERT(intr_get_level() == INTR_OFF);
-
+  sema_init(sema, 0);
   lock_init(&tid_lock);
   list_init(&ready_list);
   list_init(&all_list);
@@ -182,6 +182,7 @@ tid_t thread_create(const char *name, int priority,
   /* Initialize thread. */
   init_thread(t, name, priority);
   tid = t->tid = allocate_tid();
+  t->parent = thread_current();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame(t, sizeof *kf);
@@ -302,6 +303,7 @@ void thread_exit(void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable();
+  sema_up(&thread_current()->parent->sema);
   list_remove(&thread_current()->allelem);
   thread_current()->status = THREAD_DYING;
   schedule();
