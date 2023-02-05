@@ -11,8 +11,10 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -171,6 +173,7 @@ tid_t thread_create(const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
+  enum intr_level old_level;
 
   ASSERT(function != NULL);
 
@@ -183,6 +186,8 @@ tid_t thread_create(const char *name, int priority,
   init_thread(t, name, priority);
   tid = t->tid = allocate_tid();
   // t->parent = thread_current();
+
+  old_level = intr_disable();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame(t, sizeof *kf);
@@ -198,6 +203,12 @@ tid_t thread_create(const char *name, int priority,
   sf = alloc_frame(t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+  intr_set_level(old_level);
+
+  t->parent = thread_tid();
+  struct child_process *cp = add_child_process(t->tid);
+  t->cp = cp;
 
   /* Add to run queue. */
   thread_unblock(t);
@@ -304,6 +315,7 @@ void thread_exit(void)
      when it calls thread_schedule_tail(). */
   intr_disable();
   // sema_up(&thread_current()->parent->sema);
+  thread_release_locks();
   list_remove(&thread_current()->allelem);
   thread_current()->status = THREAD_DYING;
   schedule();
@@ -482,6 +494,19 @@ init_thread(struct thread *t, const char *name, int priority)
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);
   intr_set_level(old_level);
+
+  // Initialize file list
+  list_init(&t->file_list);
+  t->fd = 2; // Min file descriptor value is 2
+
+  // Initialize child list
+  list_init(&t->child_list);
+  t->cp = NULL;   // Children of parent is null at the start
+  t->parent = -1; // No parent at the start
+
+  // Initialize lock list
+  list_init(&t->lock_list);
+  t->executable = NULL;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -596,3 +621,52 @@ allocate_tid(void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
+
+/* Go through all list of threads and check if thread with the desired
+   thread with given pid is alive */
+int is_thread_alive(int pid)
+{
+  struct list_elem *e;
+  struct list_elem *next;
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = next)
+  {
+    next = list_next(e);
+    struct thread *t = list_entry(e, struct thread, allelem);
+    if (t->tid == pid)
+      return 1; // Return true if thread is alive
+  }
+  return 0; // Return false if thread is not alive
+}
+
+/* Add new child process to child list */
+struct child_process *add_child_process(int pid)
+{
+  struct child_process *cp = malloc(sizeof(struct child_process));
+  cp->pid = pid;
+  cp->load_status = 0;
+  cp->wait = 0;
+  cp->exit = 0;
+
+  sema_init(&cp->load_sema, 0);
+  sema_init(&cp->exit_sema, 0);
+
+  list_push_back(&thread_current()->child_list, &cp->elem);
+
+  return cp;
+}
+
+/* releases all the locks thread holds */
+void thread_release_locks(void)
+{
+  struct thread *t = thread_current();
+  struct list_elem *e;
+  struct list_elem *next;
+
+  for (e = list_begin(&t->lock_list); e != list_end(&t->lock_list); e = next)
+  {
+    next = list_next(e);
+    struct lock *lock_ptr = list_entry(e, struct lock, elem);
+    lock_release(lock_ptr);
+    list_remove(&lock_ptr->elem);
+  }
+}

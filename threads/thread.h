@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "userprog/syscall.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -97,6 +98,17 @@ struct thread
    /* Shared between thread.c and synch.c. */
    struct list_elem elem; /* List element. */
 
+   /* For System Calls */
+   tid_t parent;           // ID of parent process
+   struct list child_list; // List of child processes
+
+   struct list file_list; // List of files
+   int fd;                // File Descriptor
+
+   struct child_process *cp; // Pointer to child process
+   struct file *executable;  // Use for denying writes to executables
+   struct list lock_list;    // Use to keep track of locks the thread holds
+
 #ifdef USERPROG
    /* Owned by userprog/process.c. */
    uint32_t *pagedir; /* Page directory. */
@@ -136,6 +148,10 @@ void thread_foreach(thread_action_func *, void *);
 
 int thread_get_priority(void);
 void thread_set_priority(int);
+
+int is_thread_alive(int pid);
+struct child_process *add_child_process(int pid);
+void thread_release_locks(void);
 
 int thread_get_nice(void);
 void thread_set_nice(int);
