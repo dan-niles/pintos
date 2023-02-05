@@ -85,7 +85,7 @@ struct thread
 {
    /* Owned by thread.c. */
    // struct semaphore sema;
-   struct thread *parent;
+   struct thread *parent_t;
    tid_t tid;                 /* Thread identifier. */
    enum thread_status status; /* Thread state. */
    char name[16];             /* Name (for debugging purposes). */
