@@ -405,6 +405,16 @@ void syscall_close(int fd)
   lock_release(&file_system_lock);
 }
 
+/* function to check if pointer is valid */
+void validate_ptr(const void *vaddr)
+{
+  if (vaddr < USER_VADDR_BOTTOM || !is_user_vaddr(vaddr))
+  {
+    // virtual memory address is not reserved for us (out of bound)
+    syscall_exit(ERROR);
+  }
+}
+
 /* function to check if string is valid */
 void validate_str(const void *str)
 {
