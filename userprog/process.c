@@ -17,6 +17,8 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
@@ -79,6 +81,16 @@ start_process(void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load(argv[0], &if_.eip, &if_.esp);
+
+  if (success)
+  {
+    thread_current()->cp->load_status = 1;
+  }
+  else
+  {
+    thread_current()->cp->load_status = 2;
+  }
+  sema_up(&thread_current()->cp->load_sema);
 
   /* If load failed, quit. */
   palloc_free_page(file_name);
@@ -293,6 +305,9 @@ bool load(const char *file_name, void (**eip)(void), void **esp)
     printf("load: %s: open failed\n", file_name);
     goto done;
   }
+
+  file_deny_write(file);
+  t->executable = file;
 
   /* Read and verify executable header. */
   if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\1\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 3 || ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Elf32_Phdr) || ehdr.e_phnum > 1024)
