@@ -38,7 +38,6 @@ void validate_ptr(const void *vaddr);
 void validate_str(const void *str);
 void validate_buffer(const void *buf, unsigned size);
 
-struct lock file_system_lock;
 bool FILE_LOCK_INIT = false;
 
 void syscall_init(void)

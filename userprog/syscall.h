@@ -14,6 +14,7 @@ struct file *get_file(int filedes);
 void process_close_file(int file_descriptor);
 void syscall_exit(int status);
 
+struct lock file_system_lock;
 struct child_process
 {
     int pid;

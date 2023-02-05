@@ -164,11 +164,33 @@ start_process(void *file_name_)
 int process_wait(tid_t child_tid UNUSED)
 {
   // sema_down(&thread_current()->sema);
-  while (1)
+  // while (1)
+  // {
+  //   thread_yield();
+  // }
+  // return -1;
+
+  struct child_process *child_process_ptr = find_child_process(child_tid);
+  if (!child_process_ptr)
   {
-    thread_yield();
+    return -1;
   }
-  return -1;
+
+  if (child_process_ptr->wait)
+  {
+    return -1;
+  }
+  child_process_ptr->wait = 1; // set wait for child to true
+  while (!child_process_ptr->exit)
+  {
+    asm volatile(""
+                 :
+                 :
+                 : "memory");
+  }
+  int status = child_process_ptr->status;
+  remove_child_process(child_process_ptr);
+  return status;
 }
 
 /* Free the current process's resources. */
@@ -176,6 +198,24 @@ void process_exit(void)
 {
   struct thread *cur = thread_current();
   uint32_t *pd;
+
+  lock_acquire(&file_system_lock);
+  process_close_file(-1);
+  /* check if current thread is an executable if so we will close it */
+  if (cur->executable)
+  {
+    file_close(cur->executable); // from file.h
+  }
+  lock_release(&file_system_lock);
+
+  /* free the list of child processes */
+  remove_all_child_processes();
+
+  if (is_thread_alive(cur->parent))
+  {
+    cur->cp->exit = 1;
+    sema_up(&cur->cp->exit_sema);
+  }
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
