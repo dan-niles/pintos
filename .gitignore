@@ -6,3 +6,5 @@ tags
 *.o
 .*.swp
 /.vscode
+/guides_README
+.DS_Store
