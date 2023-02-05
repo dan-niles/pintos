@@ -408,10 +408,10 @@ void syscall_close(int fd)
 /* function to check if pointer is valid */
 void validate_ptr(const void *vaddr)
 {
-  if (vaddr < USER_VADDR_BOTTOM || !is_user_vaddr(vaddr))
+  if (vaddr < ((void *)0x08048000) || !is_user_vaddr(vaddr))
   {
     // virtual memory address is not reserved for us (out of bound)
-    syscall_exit(ERROR);
+    syscall_exit(-1);
   }
 }
 
