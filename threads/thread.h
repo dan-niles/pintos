@@ -83,7 +83,7 @@ typedef int tid_t;
 struct thread
 {
    /* Owned by thread.c. */
-   struct semaphore sema;
+   // struct semaphore sema;
    struct thread *parent;
    tid_t tid;                 /* Thread identifier. */
    enum thread_status status; /* Thread state. */

@@ -142,7 +142,7 @@ start_process(void *file_name_)
 
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
-   exception), returns -1.  If TID is invalid or if it was not a
+   exception), returns -1.  If TID is invalid or if it was not aj
    child of the calling process, or if process_wait() has already
    been successfully called for the given TID, returns -1
    immediately, without waiting.
@@ -151,7 +151,7 @@ start_process(void *file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
-  sema_down(&thread_current()->sema);
+  // sema_down(&thread_current()->sema);
   return -1;
 }
 
