@@ -1,15 +1,19 @@
 		     +--------------------------+
-       	       	     |		CS 318		|
+       	     |		   CS 318			|
 		     | PROJECT 2: USER PROGRAMS	|
 		     | 	   DESIGN DOCUMENT     	|
 		     +--------------------------+
 
 ---- GROUP ----
 
+Group 97
+
+
 >> Fill in the names and email addresses of your group members.
 
-Niles D. A. (200421U)
-Rovin K. Y. K. (200543U)
+Dan Niles - 200421U <asher.20@cse.mrt.ac.lk>
+Kulindu Rovin - 200543U <kulindu.20@cse.mrt.ac.lk>
+
 
 ---- PRELIMINARIES ----
 
@@ -34,19 +38,60 @@ Pintos Project-2 System Call : https://www.youtube.com/watch?v=sBFJwVeAwEk&list=
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+No special data structures like the ones mentioned in the question were used for argument passing.
+
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+Argument parsing was implemented in the setup_stack function. It was done n the following order.
+
+    Creating two variables named "cont" and "argv" with a default size of 2.
+
+    Use strtok_r to parse the command line, keeping track of each argument in "cont" as it goes. 
+	If more space is needed, double the size of both "cont" and "argv".
+
+    After parsing the entire command line, the contents of "cont" will be copied to "argv" in reverse order,
+	Each character string will also be pushed onto the stack during the copying process.
+
+    After copying, "argv" will have all the arguments in reverse order, and the stack pointer will be word-aligned (multiple of 4 bytes).
+
+    Push the array of pointers from "argv" onto the stack.
+
+    Push "argv", "argc", and a fake return address onto the stack.
+
+    Free "argv" and "cont".
+
+Contents of cont are copied in reverse order to argv to make sure that they can be pushed onto the stack in the correct order.
+The stack pointer was decremented from the size of the item pushed, after anything was pushed to the stack to avoid overflowing.
+
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+Pintos implements strtok_r() as opposed to strtok() due to thread safety issues.
+strtok() is not much thread safe. The outcomes of string parsing when many threads use the same instance of strtok() may be unpredictable or inaccurate.
+On the other hand, multithreaded systems can safely utilize strtok_r(), which is the reentrant variant of strtok().
+
+An extra argument, a pointer to a variable that records the status of the parsing in between calls, is accepted by the strtok_r() function. 
+This makes it possible to utilize many strtok_r() instances simultaneously, each with its own state, without interfering with the others. 
+
+
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+1.Freedom: The Unix approach offers more flexibility than Pintos since users are not forced to adopt a predetermined structure for commands and parameters.
+In the Unix approach, users are free to give commands and parameters in any format.
+As a result, the user has more control over how to use and execute their commands.
+
+2.Automation: The Unix method enables the user to create shell scripts.
+Through the usage of them, a user can automate complicated or repetitive activities by running a series of shell commands.
+Pintos does not have this kind of task automation capability.
+
 
 			     SYSTEM CALLS
 			     ============
@@ -213,14 +258,34 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+The three problems of this assignment can't be named too easy. But they are not too hard either.
+THey were all moderately challenging. It took some amount of time to understand the tasks, decide the methods of implementing the solutions
+for the tasks and to debug the errors.
+
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+Everypart of the assignment typically helped in obtaining a greater insigght of aspects of OS design. 
+The argument parsing part showed how arguments are passed to programs and how processes work synchronously and change states.
+The system calls part showed how various system calls are being executed by the OS.
+
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
+The additional document named Pintos Guide was very much useful as it explains how to approach the assignment step by step.
+It will be a great help if it can be provided at the begining of the lab 2. 
+Also all additional resources provided including the youtube vidieos were very much helpful.
+
+
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
 
+No. The way the TAs helped in the assignment throughout the semester was adequate.
+
+
 >> Any other comments?
+
+No special comments.
