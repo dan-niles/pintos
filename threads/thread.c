@@ -495,18 +495,18 @@ init_thread(struct thread *t, const char *name, int priority)
   list_push_back(&all_list, &t->allelem);
   intr_set_level(old_level);
 
-  // Initialize file list
-  list_init(&t->file_list);
-  t->fd = 2; // Min file descriptor value is 2
+  // Initialize lock list
+  list_init(&t->lock_list);
+  t->executable = NULL;
 
   // Initialize child list
   list_init(&t->child_list);
   t->cp = NULL;   // Children of parent is null at the start
   t->parent = -1; // No parent at the start
 
-  // Initialize lock list
-  list_init(&t->lock_list);
-  t->executable = NULL;
+  // Initialize file list
+  list_init(&t->file_list);
+  t->fd = 2; // Min file descriptor value is 2
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
