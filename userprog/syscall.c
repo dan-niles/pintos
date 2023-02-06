@@ -38,6 +38,8 @@ void validate_ptr(const void *vaddr);
 void validate_str(const void *str);
 void validate_buffer(const void *buf, unsigned size);
 
+bool FILE_LOCK_INIT = false;
+
 void syscall_init(void)
 {
   intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");

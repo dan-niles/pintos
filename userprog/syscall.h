@@ -28,7 +28,6 @@ struct process_file
     struct list_elem elem;
 };
 
-bool FILE_LOCK_INIT = false;
 struct lock file_system_lock;
 
 int getpage_ptr(const void *vaddr);
