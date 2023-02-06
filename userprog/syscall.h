@@ -5,15 +5,6 @@
 #include "threads/thread.h"
 void syscall_init(void);
 
-#define ERROR -1
-#define NOT_LOADED 0
-#define LOADED 1
-#define LOAD_FAIL 2
-#define CLOSE_ALL_FD -1
-#define USER_VADDR_BOTTOM ((void *)0x08048000)
-#define STD_INPUT 0
-#define STD_OUTPUT 1
-
 struct child_process
 {
     int pid;
@@ -38,8 +29,14 @@ struct child_process *find_child_process(int pid);
 void remove_child_process(struct child_process *cp);
 void remove_all_child_processes(void);
 struct file *get_file(int fd);
+int add_file(struct file *file);
+
 void process_close_file(int fd);
 void syscall_exit(int status);
+
+void validate_ptr(const void *vaddr);
+void validate_str(const void *str);
+void validate_buffer(const void *buf, unsigned size);
 
 struct lock file_system_lock;
 #endif /* userprog/syscall.h */

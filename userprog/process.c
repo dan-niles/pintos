@@ -517,7 +517,7 @@ setup_stack(void **esp, char **save_ptr, const char *file_name)
     }
   }
 
-  // copy content of cont over to argv
+  // Copy content of cont over to argv
   for (i = argc - 1; i >= 0; i--)
   {
     *esp -= strlen(cont[i]) + 1;
@@ -525,10 +525,11 @@ setup_stack(void **esp, char **save_ptr, const char *file_name)
     argv[i] = *esp;
     memcpy(*esp, cont[i], strlen(cont[i]) + 1);
   }
-  // add null
+
+  // Add null pointer
   argv[argc] = 0;
 
-  // word align by word size (4 bytes)
+  // Align stack by word size
   i = (size_t)*esp % 4;
   if (i)
   {
@@ -536,7 +537,8 @@ setup_stack(void **esp, char **save_ptr, const char *file_name)
     byte_size += i;
     memcpy(*esp, &argv[argc], i);
   }
-  // push argv[i] for i = 0, 1, ..., argc
+
+  // Push arguments into stack
   for (i = argc; i >= 0; i--)
   {
     *esp -= sizeof(char *);
@@ -545,19 +547,23 @@ setup_stack(void **esp, char **save_ptr, const char *file_name)
   }
 
   token = *esp;
-  // push argv
+
+  // Push argv onto the stack
   *esp -= sizeof(char **);
   byte_size += sizeof(char **);
   memcpy(*esp, &token, sizeof(char **));
-  // push argc
+
+  // Push argc onto the stack
   *esp -= sizeof(int);
   byte_size += sizeof(int);
   memcpy(*esp, &argc, sizeof(int));
-  // push fake return address
+
+  // Push fake return address onto the stack
   *esp -= sizeof(void *);
   byte_size += sizeof(void *);
   memcpy(*esp, &argv[argc], sizeof(void *));
-  // free argv and cont
+
+  // Free argv and cont
   free(argv);
   free(cont);
   return success;

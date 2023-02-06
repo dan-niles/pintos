@@ -15,8 +15,7 @@
 #include "filesys/filesys.h"
 
 static void syscall_handler(struct intr_frame *);
-int add_file(struct file *file);
-void get_args(struct intr_frame *f, int *arg, int num_of_args);
+
 void syscall_halt(void);
 pid_t syscall_exec(const char *cmdline);
 int syscall_wait(pid_t pid);
@@ -29,9 +28,8 @@ int syscall_write(int fd, const void *buffer, unsigned size);
 void syscall_seek(int fd, unsigned position);
 unsigned syscall_tell(int fd);
 void syscall_close(int fd);
-void validate_ptr(const void *vaddr);
-void validate_str(const void *str);
-void validate_buffer(const void *buf, unsigned size);
+
+void get_args(struct intr_frame *f, int *arg, int num_of_args);
 
 bool FILE_LOCK_INIT = false;
 
@@ -40,8 +38,7 @@ void syscall_init(void)
   intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static void
-syscall_handler(struct intr_frame *f UNUSED)
+static void syscall_handler(struct intr_frame *f UNUSED)
 {
   // Initialize file system lock
   if (!FILE_LOCK_INIT)
@@ -50,7 +47,7 @@ syscall_handler(struct intr_frame *f UNUSED)
     FILE_LOCK_INIT = true;
   }
 
-  int arg[3];
+  int arg[5];
   int esp = getpage_ptr((const void *)f->esp);
 
   switch (*(int *)esp)
@@ -66,7 +63,6 @@ syscall_handler(struct intr_frame *f UNUSED)
 
   case SYS_EXEC:
     get_args(f, &arg[0], 1);
-
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
     // Get page pointer
@@ -82,39 +78,30 @@ syscall_handler(struct intr_frame *f UNUSED)
 
   case SYS_CREATE:
     get_args(f, &arg[0], 2);
-
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
-
     // Get page pointer
     arg[0] = getpage_ptr((const void *)arg[0]);
-
     // Create file with given arguments
     f->eax = syscall_create((const char *)arg[0], (unsigned)arg[1]);
     break;
 
   case SYS_REMOVE:
     get_args(f, &arg[0], 1);
-
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
-
     // Get page pointer
     arg[0] = getpage_ptr((const void *)arg[0]);
-
     // Remove file with given arguments
     f->eax = syscall_remove((const char *)arg[0]);
     break;
 
   case SYS_OPEN:
     get_args(f, &arg[0], 1);
-
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
-
     // Get page pointer
     arg[0] = getpage_ptr((const void *)arg[0]);
-
     // Open file with given arguments
     f->eax = syscall_open((const char *)arg[0]); // open this file
     break;
@@ -127,10 +114,8 @@ syscall_handler(struct intr_frame *f UNUSED)
 
   case SYS_READ:
     get_args(f, &arg[0], 3);
-
     // Check if buffer is valid
     validate_buffer((const void *)arg[1], (unsigned)arg[2]);
-
     // Get page pointer
     arg[1] = getpage_ptr((const void *)arg[1]);
     f->eax = syscall_read(arg[0], (void *)arg[1], (unsigned)arg[2]);
@@ -171,19 +156,6 @@ void syscall_halt(void)
   shutdown_power_off();
 }
 
-/* get arguments from stack */
-void get_args(struct intr_frame *f, int *args, int num_of_args)
-{
-  int i;
-  int *ptr;
-  for (i = 0; i < num_of_args; i++)
-  {
-    ptr = (int *)f->esp + i + 1;
-    validate_ptr((const void *)ptr);
-    args[i] = *ptr;
-  }
-}
-
 /* Terminates the current user program, returning status to the kernel. */
 void syscall_exit(int status)
 {
@@ -207,12 +179,13 @@ pid_t syscall_exec(const char *cmdline)
   if (!child_process_ptr)
     return -1;
 
-  /* check if process if loaded */
+  /* Check if process if loaded */
   if (child_process_ptr->load_status == 0)
   {
     sema_down(&child_process_ptr->load_sema);
   }
-  /* check if process failed to load */
+
+  /* Check if process failed to load */
   if (child_process_ptr->load_status == 2)
   {
     remove_child_process(child_process_ptr);
@@ -231,7 +204,7 @@ int syscall_wait(pid_t pid)
 bool syscall_create(const char *file, unsigned initial_size)
 {
   lock_acquire(&file_system_lock);
-  bool successful = filesys_create(file, initial_size); // from filesys.h
+  bool successful = filesys_create(file, initial_size);
   lock_release(&file_system_lock);
   return successful;
 }
@@ -240,7 +213,7 @@ bool syscall_create(const char *file, unsigned initial_size)
 bool syscall_remove(const char *file)
 {
   lock_acquire(&file_system_lock);
-  bool successful = filesys_remove(file); // from filesys.h
+  bool successful = filesys_remove(file);
   lock_release(&file_system_lock);
   return successful;
 }
@@ -250,7 +223,7 @@ bool syscall_remove(const char *file)
 int syscall_open(const char *file)
 {
   lock_acquire(&file_system_lock);
-  struct file *file_ptr = filesys_open(file); // from filesys.h
+  struct file *file_ptr = filesys_open(file);
   if (!file_ptr)
   {
     lock_release(&file_system_lock);
@@ -271,7 +244,7 @@ int syscall_filesize(int fd)
     lock_release(&file_system_lock);
     return -1;
   }
-  int filesize = file_length(file_ptr); // from file.h
+  int filesize = file_length(file_ptr);
   lock_release(&file_system_lock);
   return filesize;
 }
@@ -292,7 +265,6 @@ int syscall_read(int fd, void *buffer, unsigned size)
     return size;
   }
 
-  /* read from file */
   lock_acquire(&file_system_lock);
   struct file *file_ptr = get_file(fd);
   if (!file_ptr)
@@ -300,7 +272,7 @@ int syscall_read(int fd, void *buffer, unsigned size)
     lock_release(&file_system_lock);
     return -1;
   }
-  int bytes_read = file_read(file_ptr, buffer, size); // from file.h
+  int bytes_read = file_read(file_ptr, buffer, size);
   lock_release(&file_system_lock);
   return bytes_read;
 }
@@ -313,11 +285,10 @@ int syscall_write(int fd, const void *buffer, unsigned size)
 
   if (fd == 1)
   {
-    putbuf(buffer, size); // from stdio.h
+    putbuf(buffer, size);
     return size;
   }
 
-  // start writing to file
   lock_acquire(&file_system_lock);
   struct file *file_ptr = get_file(fd);
   if (!file_ptr)
@@ -325,7 +296,7 @@ int syscall_write(int fd, const void *buffer, unsigned size)
     lock_release(&file_system_lock);
     return -1;
   }
-  int bytes_written = file_write(file_ptr, buffer, size); // file.h
+  int bytes_written = file_write(file_ptr, buffer, size);
   lock_release(&file_system_lock);
   return bytes_written;
 }
@@ -415,9 +386,7 @@ struct child_process *find_child_process(int pid)
     next = list_next(e);
     struct child_process *cp = list_entry(e, struct child_process, elem);
     if (pid == cp->pid)
-    {
       return cp;
-    }
   }
   return NULL;
 }
@@ -432,15 +401,15 @@ void remove_child_process(struct child_process *cp)
 /* Remove all the child processes for a given thread */
 void remove_all_child_processes(void)
 {
-  struct thread *t = thread_current();
   struct list_elem *next;
+  struct thread *t = thread_current();
   struct list_elem *e = list_begin(&t->child_list);
 
   for (; e != list_end(&t->child_list); e = next)
   {
     next = list_next(e);
     struct child_process *cp = list_entry(e, struct child_process, elem);
-    list_remove(&cp->elem); // remove child process
+    list_remove(&cp->elem);
     free(cp);
   }
 }
@@ -452,16 +421,15 @@ int add_file(struct file *file)
   if (!process_file_ptr)
     return -1;
 
-  process_file_ptr->file = file;
   process_file_ptr->fd = thread_current()->fd;
   thread_current()->fd++;
+  process_file_ptr->file = file;
   list_push_back(&thread_current()->file_list, &process_file_ptr->elem);
   return process_file_ptr->fd;
 }
 
-/* get file that matches file descriptor */
-struct file *
-get_file(int fd)
+/* Fetch file that matches file descriptor */
+struct file *get_file(int fd)
 {
   struct thread *t = thread_current();
   struct list_elem *next;
@@ -472,31 +440,41 @@ get_file(int fd)
     next = list_next(e);
     struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
     if (fd == process_file_ptr->fd)
-    {
       return process_file_ptr->file;
-    }
   }
-  return NULL; // nothing found
-}
+  return NULL;
 
-/* Close file descriptor */
-void process_close_file(int file_descriptor)
-{
-  struct thread *t = thread_current();
-  struct list_elem *next;
-  struct list_elem *e = list_begin(&t->file_list);
-
-  for (; e != list_end(&t->file_list); e = next)
+  /* Close file descriptor */
+  void process_close_file(int fd)
   {
-    next = list_next(e);
-    struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
-    if (file_descriptor == process_file_ptr->fd || file_descriptor == CLOSE_ALL_FD)
+    struct thread *t = thread_current();
+    struct list_elem *next;
+    struct list_elem *e = list_begin(&t->file_list);
+
+    for (; e != list_end(&t->file_list); e = next)
     {
-      file_close(process_file_ptr->file);
-      list_remove(&process_file_ptr->elem);
-      free(process_file_ptr);
-      if (file_descriptor != CLOSE_ALL_FD)
-        return;
+      next = list_next(e);
+      struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
+      if (fd == process_file_ptr->fd || fd == -1)
+      {
+        file_close(process_file_ptr->file);
+        list_remove(&process_file_ptr->elem);
+        free(process_file_ptr);
+        if (fd != -1)
+          return;
+      }
     }
   }
-}
+
+  /* Fetch arguments from stack */
+  void get_args(struct intr_frame * f, int *args, int num_of_args)
+  {
+    int i;
+    int *ptr;
+    for (i = 0; i < num_of_args; i++)
+    {
+      ptr = (int *)f->esp + i + 1;
+      validate_ptr((const void *)ptr);
+      args[i] = *ptr;
+    }
+  }
