@@ -3,9 +3,14 @@
 
 #include "threads/synch.h"
 #include "threads/thread.h"
-
 void syscall_init(void);
 
+#define ERROR -1
+#define NOT_LOADED 0
+#define LOADED 1
+#define LOAD_FAIL 2
+#define CLOSE_ALL_FD -1
+#define USER_VADDR_BOTTOM ((void *)0x08048000)
 #define STD_INPUT 0
 #define STD_OUTPUT 1
 
@@ -28,8 +33,6 @@ struct process_file
     struct list_elem elem;
 };
 
-struct lock file_system_lock;
-
 int getpage_ptr(const void *vaddr);
 struct child_process *find_child_process(int pid);
 void remove_child_process(struct child_process *cp);
@@ -38,4 +41,5 @@ struct file *get_file(int fd);
 void process_close_file(int fd);
 void syscall_exit(int status);
 
+struct lock file_system_lock;
 #endif /* userprog/syscall.h */
