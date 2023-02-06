@@ -169,6 +169,17 @@ Pintos does not have this kind of task automation capability.
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
+	- For 4096 bytes :
+		Maximum no. of calls required will be 2 if the data is not page-aligned and 
+		the minimum will be only 1 if the address is aligned to the start of a page
+		to ensure that all data ends up on valid pages.
+
+	- For 2 bytes : 
+		Same as above. Maximum is 2 and minimum is 1.
+
+	- Improvements:
+		Not much room for improvements.
+
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
@@ -189,6 +200,11 @@ Pintos does not have this kind of task automation capability.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+	The helper function "validate_ptr" checks if a given pointer is valid or invalid. When considering the "write" system call
+	the esp pointer and the three arguments pointer will be checked initially, if anything is invalid, the process gets terminated. 
+	Then the buffer gets validated using the "validate_buffer" helper function. At any point if the validation fails, the "exit" system call
+	is called, which in turn calls the thread_exit() function which frees allocated resources.
+	
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
