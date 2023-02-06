@@ -1,28 +1,24 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
-
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
-
+#include <user/syscall.h>
 #include "devices/input.h"
 #include "devices/shutdown.h"
 #include "filesys/file.h"
-#include <user/syscall.h>
-#include "filesys/filesys.h"s
+#include "filesys/filesys.h"
 
 static void syscall_handler(struct intr_frame *);
 int add_file(struct file *file);
 void get_args(struct intr_frame *f, int *arg, int num_of_args);
-
 void syscall_halt(void);
-pid_t syscall_exec(const char *cmd_line);
+pid_t syscall_exec(const char *cmdline);
 int syscall_wait(pid_t pid);
 bool syscall_create(const char *file, unsigned initial_size);
 bool syscall_remove(const char *file);
@@ -33,7 +29,6 @@ int syscall_write(int fd, const void *buffer, unsigned size);
 void syscall_seek(int fd, unsigned position);
 unsigned syscall_tell(int fd);
 void syscall_close(int fd);
-
 void validate_ptr(const void *vaddr);
 void validate_str(const void *str);
 void validate_buffer(const void *buf, unsigned size);
@@ -74,7 +69,6 @@ syscall_handler(struct intr_frame *f UNUSED)
 
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
-
     // Get page pointer
     arg[0] = getpage_ptr((const void *)arg[0]);
     // Execute cmdline string
@@ -122,31 +116,16 @@ syscall_handler(struct intr_frame *f UNUSED)
     arg[0] = getpage_ptr((const void *)arg[0]);
 
     // Open file with given arguments
-    f->eax = syscall_open((const char *)arg[0]);
+    f->eax = syscall_open((const char *)arg[0]); // open this file
     break;
 
   case SYS_FILESIZE:
-    // fill arg with amount of arguments needed
     get_args(f, &arg[0], 1);
-
     // Get the file size of specified file
-    f->eax = syscall_filesize(arg[0]);
+    f->eax = syscall_filesize(arg[0]); // obtain file size
     break;
 
   case SYS_READ:
-    // fill arg with the amount of arguments needed
-    get_args(f, &arg[0], 3);
-
-    // Check if buffer is valid
-    validate_buffer((const void *)arg[1], (unsigned)arg[2]);
-
-    // get page pointer
-    arg[1] = getpage_ptr((const void *)arg[1]);
-
-    f->eax = syscall_read(arg[0], (void *)arg[1], (unsigned)arg[2]);
-    break;
-
-  case SYS_WRITE:
     get_args(f, &arg[0], 3);
 
     // Check if buffer is valid
@@ -154,7 +133,15 @@ syscall_handler(struct intr_frame *f UNUSED)
 
     // Get page pointer
     arg[1] = getpage_ptr((const void *)arg[1]);
+    f->eax = syscall_read(arg[0], (void *)arg[1], (unsigned)arg[2]);
+    break;
 
+  case SYS_WRITE:
+    get_args(f, &arg[0], 3);
+    // Check if buffer is valid
+    validate_buffer((const void *)arg[1], (unsigned)arg[2]);
+    // Get page pointer
+    arg[1] = getpage_ptr((const void *)arg[1]);
     f->eax = syscall_write(arg[0], (const void *)arg[1], (unsigned)arg[2]);
     break;
 
@@ -176,14 +163,25 @@ syscall_handler(struct intr_frame *f UNUSED)
   default:
     break;
   }
-
-  thread_exit();
 }
 
 /* Terminates Pintos by calling shutdown_power_off() */
 void syscall_halt(void)
 {
   shutdown_power_off();
+}
+
+/* get arguments from stack */
+void get_args(struct intr_frame *f, int *args, int num_of_args)
+{
+  int i;
+  int *ptr;
+  for (i = 0; i < num_of_args; i++)
+  {
+    ptr = (int *)f->esp + i + 1;
+    validate_ptr((const void *)ptr);
+    args[i] = *ptr;
+  }
 }
 
 /* Terminates the current user program, returning status to the kernel. */
@@ -193,9 +191,8 @@ void syscall_exit(int status)
   if (is_thread_alive(cur->parent) && cur->cp)
   {
     if (status < 0)
-    {
       status = -1;
-    }
+
     cur->cp->status = status;
   }
   printf("%s: exit(%d)\n", cur->name, status);
@@ -203,17 +200,18 @@ void syscall_exit(int status)
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any given arguments, and returns the new process's program id (pid).  */
-pid_t syscall_exec(const char *cmd_line)
+pid_t syscall_exec(const char *cmdline)
 {
-  pid_t pid = process_execute(cmd_line);
+  pid_t pid = process_execute(cmdline);
   struct child_process *child_process_ptr = find_child_process(pid);
   if (!child_process_ptr)
     return -1;
 
   /* check if process if loaded */
   if (child_process_ptr->load_status == 0)
+  {
     sema_down(&child_process_ptr->load_sema);
-
+  }
   /* check if process failed to load */
   if (child_process_ptr->load_status == 2)
   {
@@ -233,7 +231,7 @@ int syscall_wait(pid_t pid)
 bool syscall_create(const char *file, unsigned initial_size)
 {
   lock_acquire(&file_system_lock);
-  bool successful = filesys_create(file, initial_size);
+  bool successful = filesys_create(file, initial_size); // from filesys.h
   lock_release(&file_system_lock);
   return successful;
 }
@@ -284,15 +282,13 @@ int syscall_read(int fd, void *buffer, unsigned size)
   if (size <= 0)
     return size;
 
-  if (fd == STD_INPUT)
+  if (fd == 0)
   {
     unsigned i = 0;
     uint8_t *local_buf = (uint8_t *)buffer;
     for (; i < size; i++)
-    {
-      // retrieve pressed key from the input buffer
-      local_buf[i] = input_getc(); // from input.h
-    }
+      local_buf[i] = input_getc();
+
     return size;
   }
 
@@ -315,7 +311,7 @@ int syscall_write(int fd, const void *buffer, unsigned size)
   if (size <= 0)
     return size;
 
-  if (fd == STD_OUTPUT)
+  if (fd == 1)
   {
     putbuf(buffer, size); // from stdio.h
     return size;
@@ -386,11 +382,11 @@ void validate_str(const void *str)
 }
 
 /* Checks if given buffer is valid */
-void validate_buffer(const void *buf, unsigned byte_size)
+void validate_buffer(const void *buf, unsigned size)
 {
   unsigned i = 0;
   char *local_buffer = (char *)buf;
-  for (; i < byte_size; i++)
+  for (; i < size; i++)
   {
     validate_ptr((const void *)local_buffer);
     local_buffer++;
@@ -463,21 +459,9 @@ int add_file(struct file *file)
   return process_file_ptr->fd;
 }
 
-/* Fetch arguments from the stack */
-void get_args(struct intr_frame *f, int *args, int num_of_args)
-{
-  int i;
-  int *ptr;
-  for (i = 0; i < num_of_args; i++)
-  {
-    ptr = (int *)f->esp + i + 1;
-    validate_ptr((const void *)ptr);
-    args[i] = *ptr;
-  }
-}
-
-/* Fetch file with specified file descriptor */
-struct file *get_file(int fd)
+/* get file that matches file descriptor */
+struct file *
+get_file(int fd)
 {
   struct thread *t = thread_current();
   struct list_elem *next;
@@ -492,11 +476,11 @@ struct file *get_file(int fd)
       return process_file_ptr->file;
     }
   }
-  return NULL;
+  return NULL; // nothing found
 }
 
 /* Close file descriptor */
-void process_close_file(int fd)
+void process_close_file(int file_descriptor)
 {
   struct thread *t = thread_current();
   struct list_elem *next;
@@ -506,12 +490,12 @@ void process_close_file(int fd)
   {
     next = list_next(e);
     struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
-    if (fd == process_file_ptr->fd || fd == -1)
+    if (file_descriptor == process_file_ptr->fd || file_descriptor == CLOSE_ALL_FD)
     {
       file_close(process_file_ptr->file);
       list_remove(&process_file_ptr->elem);
       free(process_file_ptr);
-      if (fd != -1)
+      if (file_descriptor != CLOSE_ALL_FD)
         return;
     }
   }
