@@ -127,9 +127,9 @@ int process_wait(tid_t child_tid UNUSED)
                  :
                  : "memory");
   }
-  int status = child_process_ptr->status;
+  int process_status = child_process_ptr->status;
   remove_child_process(child_process_ptr);
-  return status;
+  return process_status;
 }
 
 /* Free the current process's resources. */
@@ -252,11 +252,11 @@ struct Elf32_Phdr
 #define PF_W 2 /* Writable. */
 #define PF_R 4 /* Readable. */
 
-static bool setup_stack(void **esp, char **save_ptr, const char *file_name);
 static bool validate_segment(const struct Elf32_Phdr *, struct file *);
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          uint32_t read_bytes, uint32_t zero_bytes,
                          bool writable);
+static bool setup_stack(void **esp, char **save_ptr, const char *file_name);
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
    Stores the executable's entry point into *EIP
@@ -363,7 +363,6 @@ bool load(const char *file_name, void (**eip)(void), void **esp, char **save_ptr
   success = true;
 
 done:
-
   return success;
 }
 
@@ -517,49 +516,55 @@ setup_stack(void **esp, char **save_ptr, const char *file_name)
     }
   }
 
-  // copy content of cont over to argv
+  // Copy content of cont over to argv
   for (i = argc - 1; i >= 0; i--)
   {
     *esp -= strlen(cont[i]) + 1;
-    byte_size += strlen(cont[i]) + 1;
     argv[i] = *esp;
+    byte_size += strlen(cont[i]) + 1;
     memcpy(*esp, cont[i], strlen(cont[i]) + 1);
   }
-  // add null
+
+  // Add null pointer
   argv[argc] = 0;
 
-  // word align by word size (4 bytes)
+  // Align stack by word size
   i = (size_t)*esp % 4;
   if (i)
   {
-    *esp -= i;
     byte_size += i;
+    *esp -= i;
     memcpy(*esp, &argv[argc], i);
   }
-  // push argv[i] for i = 0, 1, ..., argc
+
+  // Push arguments into stack
   for (i = argc; i >= 0; i--)
   {
-    *esp -= sizeof(char *);
     byte_size += sizeof(char *);
+    *esp -= sizeof(char *);
     memcpy(*esp, &argv[i], sizeof(char *));
   }
 
   token = *esp;
-  // push argv
-  *esp -= sizeof(char **);
+
+  // Push argv onto the stack
   byte_size += sizeof(char **);
+  *esp -= sizeof(char **);
   memcpy(*esp, &token, sizeof(char **));
-  // push argc
-  *esp -= sizeof(int);
+
+  // Push argc onto the stack
   byte_size += sizeof(int);
+  *esp -= sizeof(int);
   memcpy(*esp, &argc, sizeof(int));
-  // push fake return address
-  *esp -= sizeof(void *);
+
+  // Push fake return address onto the stack
   byte_size += sizeof(void *);
+  *esp -= sizeof(void *);
   memcpy(*esp, &argv[argc], sizeof(void *));
-  // free argv and cont
-  free(argv);
+
+  // Free argv and cont
   free(cont);
+  free(argv);
   return success;
 }
 

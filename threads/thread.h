@@ -99,15 +99,15 @@ struct thread
    struct list_elem elem; /* List element. */
 
    /* For System Calls */
+   struct child_process *cp; // Pointer to child process
+   struct file *executable;  // Use for denying writes to executables
+   struct list lock_list;    // Use to keep track of locks the thread holds
+
    tid_t parent;           // ID of parent process
    struct list child_list; // List of child processes
 
    struct list file_list; // List of files
    int fd;                // File Descriptor
-
-   struct child_process *cp; // Pointer to child process
-   struct file *executable;  // Use for denying writes to executables
-   struct list lock_list;    // Use to keep track of locks the thread holds
 
 #ifdef USERPROG
    /* Owned by userprog/process.c. */
