@@ -19,7 +19,7 @@ static void syscall_handler(struct intr_frame *);
 pid_t syscall_exec(const char *cmdline);
 int syscall_wait(pid_t pid);
 
-void get_args(struct intr_frame *f, int *arg, int num_of_args);
+void fetch_args(struct intr_frame *f, int arg_count, int *arg);
 
 bool FILE_LOCK_INIT = false;
 
@@ -31,14 +31,14 @@ void syscall_init(void)
 static void syscall_handler(struct intr_frame *f UNUSED)
 {
   // Initialize file system lock
-  if (!FILE_LOCK_INIT)
+  if (FILE_LOCK_INIT == false)
   {
     lock_init(&file_system_lock);
     FILE_LOCK_INIT = true;
   }
 
   int arg[5];
-  int esp = getpage_ptr((const void *)f->esp);
+  int esp = fetch_page_ptr((const void *)f->esp);
 
   switch (*(int *)esp)
   {
@@ -47,91 +47,91 @@ static void syscall_handler(struct intr_frame *f UNUSED)
     break;
 
   case SYS_EXIT:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     syscall_exit(arg[0]);
     break;
 
   case SYS_EXEC:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
     // Get page pointer
-    arg[0] = getpage_ptr((const void *)arg[0]);
+    arg[0] = fetch_page_ptr((const void *)arg[0]);
     // Execute cmdline string
     f->eax = syscall_exec((const char *)arg[0]);
     break;
 
   case SYS_WAIT:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     f->eax = syscall_wait(arg[0]);
     break;
 
   case SYS_CREATE:
-    get_args(f, &arg[0], 2);
+    fetch_args(f, 2, &arg[0]);
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
     // Get page pointer
-    arg[0] = getpage_ptr((const void *)arg[0]);
+    arg[0] = fetch_page_ptr((const void *)arg[0]);
     // Create file with given arguments
     f->eax = syscall_create((const char *)arg[0], (unsigned)arg[1]);
     break;
 
   case SYS_REMOVE:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
     // Get page pointer
-    arg[0] = getpage_ptr((const void *)arg[0]);
+    arg[0] = fetch_page_ptr((const void *)arg[0]);
     // Remove file with given arguments
     f->eax = syscall_remove((const char *)arg[0]);
     break;
 
   case SYS_OPEN:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     // Check if cmdline string is valid
     validate_str((const void *)arg[0]);
     // Get page pointer
-    arg[0] = getpage_ptr((const void *)arg[0]);
+    arg[0] = fetch_page_ptr((const void *)arg[0]);
     // Open file with given arguments
     f->eax = syscall_open((const char *)arg[0]); // open this file
     break;
 
   case SYS_FILESIZE:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     // Get the file size of specified file
     f->eax = syscall_filesize(arg[0]); // obtain file size
     break;
 
   case SYS_READ:
-    get_args(f, &arg[0], 3);
+    fetch_args(f, 3, &arg[0]);
     // Check if buffer is valid
     validate_buffer((const void *)arg[1], (unsigned)arg[2]);
     // Get page pointer
-    arg[1] = getpage_ptr((const void *)arg[1]);
+    arg[1] = fetch_page_ptr((const void *)arg[1]);
     f->eax = syscall_read(arg[0], (void *)arg[1], (unsigned)arg[2]);
     break;
 
   case SYS_WRITE:
-    get_args(f, &arg[0], 3);
+    fetch_args(f, 3, &arg[0]);
     // Check if buffer is valid
     validate_buffer((const void *)arg[1], (unsigned)arg[2]);
     // Get page pointer
-    arg[1] = getpage_ptr((const void *)arg[1]);
+    arg[1] = fetch_page_ptr((const void *)arg[1]);
     f->eax = syscall_write(arg[0], (const void *)arg[1], (unsigned)arg[2]);
     break;
 
   case SYS_SEEK:
-    get_args(f, &arg[0], 2);
+    fetch_args(f, 2, &arg[0]);
     syscall_seek(arg[0], (unsigned)arg[1]);
     break;
 
   case SYS_TELL:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     f->eax = syscall_tell(arg[0]);
     break;
 
   case SYS_CLOSE:
-    get_args(f, &arg[0], 1);
+    fetch_args(f, 1, &arg[0]);
     syscall_close(arg[0]);
     break;
 
@@ -150,7 +150,7 @@ void syscall_halt(void)
 void syscall_exit(int status)
 {
   struct thread *cur = thread_current();
-  if (is_thread_alive(cur->parent) && cur->cp)
+  if (cur->cp && is_thread_alive(cur->parent))
   {
     if (status < 0)
       status = -1;
@@ -171,9 +171,7 @@ pid_t syscall_exec(const char *cmdline)
 
   /* Check if process if loaded */
   if (child_process_ptr->load_status == 0)
-  {
     sema_down(&child_process_ptr->load_sema);
-  }
 
   /* Check if process failed to load */
   if (child_process_ptr->load_status == 2)
@@ -181,6 +179,7 @@ pid_t syscall_exec(const char *cmdline)
     remove_child_process(child_process_ptr);
     return -1;
   }
+
   return pid;
 }
 
@@ -315,7 +314,7 @@ unsigned syscall_tell(int fd)
     lock_release(&file_system_lock);
     return -1;
   }
-  off_t offset = file_tell(file_ptr); // from file.h
+  off_t offset = file_tell(file_ptr);
   lock_release(&file_system_lock);
   return offset;
 }
@@ -338,16 +337,17 @@ void validate_ptr(const void *vaddr)
 /* Checks if given string is valid */
 void validate_str(const void *str)
 {
-  for (; *(char *)getpage_ptr(str) != 0; str = (char *)str + 1)
-    ;
+  for (int i = 0; *(char *)fetch_page_ptr(str) != 0; str = (char *)str + 1)
+  {
+    i++;
+  }
 }
 
 /* Checks if given buffer is valid */
 void validate_buffer(const void *buf, unsigned size)
 {
-  unsigned i = 0;
   char *local_buffer = (char *)buf;
-  for (; i < size; i++)
+  for (unsigned i = 0; i < size; i++)
   {
     validate_ptr((const void *)local_buffer);
     local_buffer++;
@@ -355,7 +355,7 @@ void validate_buffer(const void *buf, unsigned size)
 }
 
 /* Fetches the pointer to the page */
-int getpage_ptr(const void *vaddr)
+int fetch_page_ptr(const void *vaddr)
 {
   void *ptr = pagedir_get_page(thread_current()->pagedir, vaddr);
   if (!ptr)
@@ -458,11 +458,11 @@ void process_close_file(int fd)
 }
 
 /* Fetch arguments from stack */
-void get_args(struct intr_frame *f, int *args, int num_of_args)
+void fetch_args(struct intr_frame *f, int arg_count, int *args)
 {
   int i;
   int *ptr;
-  for (i = 0; i < num_of_args; i++)
+  for (i = 0; i < arg_count; i++)
   {
     ptr = (int *)f->esp + i + 1;
     validate_ptr((const void *)ptr);

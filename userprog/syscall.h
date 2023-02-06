@@ -35,7 +35,7 @@ void syscall_seek(int fd, unsigned position);
 unsigned syscall_tell(int fd);
 void syscall_close(int fd);
 
-int getpage_ptr(const void *vaddr);
+int fetch_page_ptr(const void *vaddr);
 struct child_process *find_child_process(int pid);
 void remove_child_process(struct child_process *cp);
 void remove_all_child_processes(void);
