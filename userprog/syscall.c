@@ -407,7 +407,7 @@ void remove_all_child_processes(void)
 /* Adds a file to file list and return file descriptor of added file */
 int add_file(struct file *file)
 {
-  struct process_file *process_file_ptr = malloc(sizeof(struct process_file));
+  struct current_file *process_file_ptr = malloc(sizeof(struct current_file));
   if (!process_file_ptr)
     return -1;
 
@@ -428,7 +428,7 @@ struct file *get_file(int fd)
   for (; e != list_end(&t->file_list); e = next)
   {
     next = list_next(e);
-    struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
+    struct current_file *process_file_ptr = list_entry(e, struct current_file, elem);
     if (fd == process_file_ptr->fd)
       return process_file_ptr->file;
   }
@@ -445,7 +445,7 @@ void process_close_file(int fd)
   for (; e != list_end(&t->file_list); e = next)
   {
     next = list_next(e);
-    struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
+    struct current_file *process_file_ptr = list_entry(e, struct current_file, elem);
     if (fd == process_file_ptr->fd || fd == -1)
     {
       file_close(process_file_ptr->file);

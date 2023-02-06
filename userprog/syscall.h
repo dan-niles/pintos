@@ -8,16 +8,16 @@ void syscall_init(void);
 struct child_process
 {
     int pid;
-    int load_status;
     int wait;
     int exit;
+    int load_status;
     int status;
-    struct semaphore load_sema;
     struct semaphore exit_sema;
+    struct semaphore load_sema;
     struct list_elem elem;
 };
 
-struct process_file
+struct current_file
 {
     struct file *file;
     int fd;

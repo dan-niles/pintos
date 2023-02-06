@@ -8,9 +8,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Niles D. A. (200421U)
+Rovin K. Y. K. (200543U)
 
 ---- PRELIMINARIES ----
 
@@ -58,14 +57,69 @@ Pintos Project-2 System Call : https://www.youtube.com/watch?v=sBFJwVeAwEk&list=
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+	- In syscall.h :
+		> struct lock file_system_lock;
+			* Used as a lock for critical section involving modification of files
+
+		> struct child_process {
+			int pid;
+			int wait;
+			int exit;
+			int load_status;
+			int status;
+			struct semaphore exit_sema;
+			struct semaphore load_sema;
+			struct list_elem elem;
+		};
+			* This struct holds details (pid, load_status, etc.) about child processes.
+
+		> struct current_file {
+			struct file *file;
+			int fd;
+			struct list_elem elem;
+		};
+			* This struct holds the file descriptor as well as the content of the file that is currently being worked on.
+
+	- In thread.h : 
+		> struct child_process *cp; 
+			* Pointer to child process currently running
+
+		> struct file *executable;  
+			* Used to deny writes to executables
+
+		> struct list lock_list;    
+			* This list keeps track of all the locks the thread holds
+
+		> tid_t parent;          
+			* Thread ID of parent process
+
+		> struct list child_list; 
+			* List of child processes of the thread
+
+		> struct list file_list;
+			* This list keeps track of all the files
+
+		> int fd;                
+			* Current file descriptor
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+  
+  File descriptors are unique for each open file for each process. Each process has an independent set of file descriptors. 
+  File descriptors are not inherited by child processes. When a single file is opened more than once, 
+  whether by a single process or different processes, each "open" system call returns a new file descriptor. 
+  Different file descriptors for a single file are closed independently in separate calls to the "close" system call 
+  and they do not share a file position.
 
 ---- ALGORITHMS ----
 
->> B3: Describe your code for reading and writing user data from the
->> kernel.
+>> B3: Describe your code for reading and writing user data from the kernel.
+
+	When reading and reading, initially we check if the stack pointer is valid. If it is valid, we can 
+	dereference it and find the specific system call to run. Using the "fetch_args" function we fetch the arguments that will be 
+	used for the "write" or "read" system call. Moving forward we will check the validity of the buffer and if it's ok we can 
+	proceed with the system call.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -76,6 +130,9 @@ Pintos Project-2 System Call : https://www.youtube.com/watch?v=sBFJwVeAwEk&list=
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+	The "wait" system-call calls the proccess_wait function in process.c which loops in a while 
+	loop waiting for child processes to terminate, with sentinel being the child process exit member variable. 
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -98,6 +155,11 @@ Pintos Project-2 System Call : https://www.youtube.com/watch?v=sBFJwVeAwEk&list=
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+	The status of the executable is kept in a child_process struct. Using the process id returned from process_execute, we 
+	use a helper function to find the child process of the process executed. From here we can check the status is loaded or not. 
+	If it has successfully loaded, the "exec" system call returns the pid. If it has failed to load, the child process is removed and 
+	the system call exits returning error code -1.  
+
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
 >> calls wait(C) before C exits?  After C exits?  How do you ensure
@@ -105,13 +167,36 @@ Pintos Project-2 System Call : https://www.youtube.com/watch?v=sBFJwVeAwEk&list=
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+	* When P calls wait(C), P will stop and wait for C to exit. C exits releasing all of its locks. 
+	* If P calls wait after C exits, it will not wait since at this point it has no child processes to wait for since, C has exited.
+	* When P terminates before C exits, P will terminate all of its child processses (All locks held by them will be released), so C also gets terminated.
+	* Whem P terminates after C exits, C's locks should be released. 
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+	For user memory access from the kernel, we use function 
+	decomposition for error catching. This reduces the difficulty and seems straightforward, simple, and
+	efficient rather than implementing page fault memory handling.
+  	
+	Whenever a pointer is invalid, it will be caught by the page fault interrupt 
+	handler. In the interrupt handler the syscall exit(-1) is called.
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+
+	Advantages: 
+		* Unique file-descriptor numbers for each process, eliminates the requirement for a global lock on a
+		file-descriptor number generator.
+
+		* Unique file descriptor for each process eliminates the requirement to consider for race conditions.
+
+		* Global lock on open file hash table is simple and easy to work with.
+
+	Disadvantages:
+		* Per-process file descriptor numbers can make debugging confusing.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
