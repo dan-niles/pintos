@@ -18,6 +18,25 @@
 #include "filesys/filesys.h"s
 
 static void syscall_handler(struct intr_frame *);
+int add_file(struct file *file);
+void get_args(struct intr_frame *f, int *arg, int num_of_args);
+
+void syscall_halt(void);
+pid_t syscall_exec(const char *cmd_line);
+int syscall_wait(pid_t pid);
+bool syscall_create(const char *file, unsigned initial_size);
+bool syscall_remove(const char *file);
+int syscall_open(const char *file);
+int syscall_filesize(int fd);
+int syscall_read(int fd, void *buffer, unsigned size);
+int syscall_write(int fd, const void *buffer, unsigned size);
+void syscall_seek(int fd, unsigned position);
+unsigned syscall_tell(int fd);
+void syscall_close(int fd);
+
+void validate_ptr(const void *vaddr);
+void validate_str(const void *str);
+void validate_buffer(const void *buf, unsigned size);
 
 void syscall_init(void)
 {
@@ -429,13 +448,13 @@ void remove_all_child_processes(void)
 }
 
 /* Adds a file to file list and return file descriptor of added file */
-int add_file(struct file *file_name)
+int add_file(struct file *file)
 {
   struct process_file *process_file_ptr = malloc(sizeof(struct process_file));
   if (!process_file_ptr)
     return -1;
 
-  process_file_ptr->file = file_name;
+  process_file_ptr->file = file;
   process_file_ptr->fd = thread_current()->fd;
   thread_current()->fd++;
   list_push_back(&thread_current()->file_list, &process_file_ptr->elem);
