@@ -581,6 +581,23 @@ void thread_schedule_tail(struct thread *prev)
   }
 }
 
+/* Releases all locks a thread holds */
+void thread_release_locks(void)
+{
+  struct list_elem *next;
+  struct list_elem *e;
+
+  struct thread *t = thread_current();
+
+  for (e = list_begin(&t->lock_list); e != list_end(&t->lock_list); e = next)
+  {
+    next = list_next(e);
+    struct lock *lock_ptr = list_entry(e, struct lock, elem);
+    lock_release(lock_ptr);
+    list_remove(&lock_ptr->elem);
+  }
+}
+
 /* Schedules a new process.  At entry, interrupts must be off and
    the running process's state must have been changed from
    running to some other state.  This function finds another
@@ -618,16 +635,13 @@ allocate_tid(void)
   return tid;
 }
 
-/* Offset of `stack' member within `struct thread'.
-   Used by switch.S, which can't figure it out on its own. */
-uint32_t thread_stack_ofs = offsetof(struct thread, stack);
-
 /* Go through all list of threads and check if thread with the desired
    thread with given pid is alive */
 int is_thread_alive(int pid)
 {
-  struct list_elem *e;
   struct list_elem *next;
+  struct list_elem *e;
+
   for (e = list_begin(&all_list); e != list_end(&all_list); e = next)
   {
     next = list_next(e);
@@ -638,35 +652,24 @@ int is_thread_alive(int pid)
   return 0; // Return false if thread is not alive
 }
 
+/* Offset of `stack' member within `struct thread'.
+   Used by switch.S, which can't figure it out on its own. */
+uint32_t thread_stack_ofs = offsetof(struct thread, stack);
+
 /* Add new child process to child list */
 struct child_process *add_child_process(int pid)
 {
   struct child_process *cp = malloc(sizeof(struct child_process));
   cp->pid = pid;
-  cp->load_status = 0;
-  cp->wait = 0;
-  cp->exit = 0;
 
-  sema_init(&cp->load_sema, 0);
+  cp->exit = 0;
+  cp->wait = 0;
+  cp->load_status = 0;
+
   sema_init(&cp->exit_sema, 0);
+  sema_init(&cp->load_sema, 0);
 
   list_push_back(&thread_current()->child_list, &cp->elem);
 
   return cp;
-}
-
-/* releases all the locks thread holds */
-void thread_release_locks(void)
-{
-  struct thread *t = thread_current();
-  struct list_elem *e;
-  struct list_elem *next;
-
-  for (e = list_begin(&t->lock_list); e != list_end(&t->lock_list); e = next)
-  {
-    next = list_next(e);
-    struct lock *lock_ptr = list_entry(e, struct lock, elem);
-    lock_release(lock_ptr);
-    list_remove(&lock_ptr->elem);
-  }
 }

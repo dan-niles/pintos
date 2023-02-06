@@ -24,6 +24,17 @@ struct process_file
     struct list_elem elem;
 };
 
+void syscall_halt(void);
+bool syscall_create(const char *file, unsigned initial_size);
+bool syscall_remove(const char *file);
+int syscall_open(const char *file);
+int syscall_filesize(int fd);
+int syscall_read(int fd, void *buffer, unsigned size);
+int syscall_write(int fd, const void *buffer, unsigned size);
+void syscall_seek(int fd, unsigned position);
+unsigned syscall_tell(int fd);
+void syscall_close(int fd);
+
 int getpage_ptr(const void *vaddr);
 struct child_process *find_child_process(int pid);
 void remove_child_process(struct child_process *cp);

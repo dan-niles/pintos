@@ -16,18 +16,8 @@
 
 static void syscall_handler(struct intr_frame *);
 
-void syscall_halt(void);
 pid_t syscall_exec(const char *cmdline);
 int syscall_wait(pid_t pid);
-bool syscall_create(const char *file, unsigned initial_size);
-bool syscall_remove(const char *file);
-int syscall_open(const char *file);
-int syscall_filesize(int fd);
-int syscall_read(int fd, void *buffer, unsigned size);
-int syscall_write(int fd, const void *buffer, unsigned size);
-void syscall_seek(int fd, unsigned position);
-unsigned syscall_tell(int fd);
-void syscall_close(int fd);
 
 void get_args(struct intr_frame *f, int *arg, int num_of_args);
 
@@ -443,38 +433,39 @@ struct file *get_file(int fd)
       return process_file_ptr->file;
   }
   return NULL;
+}
 
-  /* Close file descriptor */
-  void process_close_file(int fd)
+/* Close file descriptor */
+void process_close_file(int fd)
+{
+  struct thread *t = thread_current();
+  struct list_elem *next;
+  struct list_elem *e = list_begin(&t->file_list);
+
+  for (; e != list_end(&t->file_list); e = next)
   {
-    struct thread *t = thread_current();
-    struct list_elem *next;
-    struct list_elem *e = list_begin(&t->file_list);
-
-    for (; e != list_end(&t->file_list); e = next)
+    next = list_next(e);
+    struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
+    if (fd == process_file_ptr->fd || fd == -1)
     {
-      next = list_next(e);
-      struct process_file *process_file_ptr = list_entry(e, struct process_file, elem);
-      if (fd == process_file_ptr->fd || fd == -1)
-      {
-        file_close(process_file_ptr->file);
-        list_remove(&process_file_ptr->elem);
-        free(process_file_ptr);
-        if (fd != -1)
-          return;
-      }
+      file_close(process_file_ptr->file);
+      list_remove(&process_file_ptr->elem);
+      free(process_file_ptr);
+      if (fd != -1)
+        return;
     }
   }
+}
 
-  /* Fetch arguments from stack */
-  void get_args(struct intr_frame * f, int *args, int num_of_args)
+/* Fetch arguments from stack */
+void get_args(struct intr_frame *f, int *args, int num_of_args)
+{
+  int i;
+  int *ptr;
+  for (i = 0; i < num_of_args; i++)
   {
-    int i;
-    int *ptr;
-    for (i = 0; i < num_of_args; i++)
-    {
-      ptr = (int *)f->esp + i + 1;
-      validate_ptr((const void *)ptr);
-      args[i] = *ptr;
-    }
+    ptr = (int *)f->esp + i + 1;
+    validate_ptr((const void *)ptr);
+    args[i] = *ptr;
   }
+}
