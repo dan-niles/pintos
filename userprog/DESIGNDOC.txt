@@ -8,12 +8,10 @@
 
 Group 97
 
-
 >> Fill in the names and email addresses of your group members.
 
 Dan Niles - 200421U <asher.20@cse.mrt.ac.lk>
 Kulindu Rovin - 200543U <kulindu.20@cse.mrt.ac.lk>
-
 
 ---- PRELIMINARIES ----
 
@@ -39,7 +37,6 @@ Pintos Project-2 System Call : https://www.youtube.com/watch?v=sBFJwVeAwEk&list=
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
 No special data structures like the ones mentioned in the question were used for argument passing.
-
 
 ---- ALGORITHMS ----
 
@@ -78,7 +75,6 @@ On the other hand, multithreaded systems can safely utilize strtok_r(), which is
 
 An extra argument, a pointer to a variable that records the status of the parsing in between calls, is accepted by the strtok_r() function. 
 This makes it possible to utilize many strtok_r() instances simultaneously, each with its own state, without interfering with the others. 
-
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
@@ -235,16 +231,16 @@ Pintos does not have this kind of task automation capability.
 	Advantages: 
 		* Unique file-descriptor numbers for each process, eliminates the requirement for a global lock on a
 		file-descriptor number generator.
-
 		* Unique file descriptor for each process eliminates the requirement to consider for race conditions.
-
 		* Global lock on open file hash table is simple and easy to work with.
 
 	Disadvantages:
-		* Per-process file descriptor numbers can make debugging confusing.
+		* Unique file descriptor numbers per process can make debugging confusing.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+	We did not change the default tid_t to pid_t mapping.
 
 			   SURVEY QUESTIONS
 			   ================
@@ -258,34 +254,30 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
-The three problems of this assignment can't be named too easy. But they are not too hard either.
-THey were all moderately challenging. It took some amount of time to understand the tasks, decide the methods of implementing the solutions
-for the tasks and to debug the errors.
-
+	The three problems of this assignment can't be named too easy. But they are not too hard either.
+	THey were all moderately challenging. It took some amount of time to understand the tasks, decide the methods of implementing the solutions
+	for the tasks and to debug the errors.
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
 
-Everypart of the assignment typically helped in obtaining a greater insigght of aspects of OS design. 
-The argument parsing part showed how arguments are passed to programs and how processes work synchronously and change states.
-The system calls part showed how various system calls are being executed by the OS.
-
+	Everypart of the assignment typically helped in obtaining a greater insigght of aspects of OS design. 
+	The argument parsing part showed how arguments are passed to programs and how processes work synchronously and change states.
+	The system calls part showed how various system calls are being executed by the OS.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
-The additional document named Pintos Guide was very much useful as it explains how to approach the assignment step by step.
-It will be a great help if it can be provided at the begining of the lab 2. 
-Also all additional resources provided including the youtube vidieos were very much helpful.
-
+	The additional document named Pintos Guide was very much useful as it explains how to approach the assignment step by step.
+	It will be a great help if it can be provided at the begining of the lab 2. 
+	Also all additional resources provided including the youtube vidieos were very much helpful.
 
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
 
-No. The way the TAs helped in the assignment throughout the semester was adequate.
-
+	No. The way the TAs helped in the assignment throughout the semester was adequate.
 
 >> Any other comments?
 
-No special comments.
+	No special comments.
