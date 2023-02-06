@@ -139,6 +139,9 @@ start_process(void *file_name_)
     *(int *)if_.esp = 0;
   }
 
+  // hex_dump(0, *esp, byte_size, 1);
+  // hex_dump((int)*esp + byte_size, *esp, byte_size, 1);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -550,7 +553,7 @@ setup_stack(void **esp)
   {
     success = install_page(((uint8_t *)PHYS_BASE) - PGSIZE, kpage, true);
     if (success)
-      *esp = PHYS_BASE - 12;
+      *esp = PHYS_BASE;
     else
       palloc_free_page(kpage);
   }

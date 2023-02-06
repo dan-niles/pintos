@@ -144,10 +144,10 @@ page_fault(struct intr_frame *f)
 
    /* Count page faults. */
    page_fault_cnt++;
-   if (!not_present)
-   {
-      thread_exit();
-   }
+   // if (!not_present)
+   // {
+   //    thread_exit();
+   // }
 
    /* Determine cause. */
    not_present = (f->error_code & PF_P) == 0;
