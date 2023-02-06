@@ -92,7 +92,6 @@ static tid_t allocate_tid(void);
 void thread_init(void)
 {
   ASSERT(intr_get_level() == INTR_OFF);
-  sema_init(sema, 0);
   lock_init(&tid_lock);
   list_init(&ready_list);
   list_init(&all_list);
@@ -478,7 +477,7 @@ init_thread(struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *)t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-
+  sema_init(&t->sema, 0);
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);
   intr_set_level(old_level);
